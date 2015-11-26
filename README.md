@@ -5,3 +5,4 @@ or experimenting with features
 Current content:
 
 * KGrep: A simple grep-like, multithreaded kotlin program, that scans every file in a path(including subdirectories) for a given pattern
+* LinkedList: An implementation of a mutable LinkedList in scala, built together with @ke00n
