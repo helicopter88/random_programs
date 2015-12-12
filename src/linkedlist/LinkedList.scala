@@ -1,6 +1,8 @@
 package wacc_deod.utils.linkedlist
 
 
+import wacc_deod.utils.Log
+
 import scala.collection.mutable
 
 /**
@@ -38,6 +40,39 @@ class LinkedList[T] extends mutable.Iterable[T] {
     */
   def update(n: Int, newelem: T) = findByIndex(n).value = newelem
 
+  private def findByIndex(i: Int) = {
+    if (i >= listLength) {
+      Log.d(iterator.length)
+      throw new IndexOutOfBoundsException(s"Index out of bounds: $i, list size: $listLength")
+    }
+    var node = firstNode
+
+    while (node.index < i) {
+      node = node.next
+    }
+    node
+  }
+
+  /**
+    * gets an iterator for the list
+    * @return an instance of the iterator
+    */
+  override def iterator: Iterator[T] = {
+    new Iterator[T] {
+      private var linkedNode = firstNode
+
+      override def hasNext: Boolean = linkedNode != null
+
+      override def next(): T = {
+        if (!hasNext)
+          throw new IndexOutOfBoundsException("Trying to iterate over bounds")
+        val ret = linkedNode.value
+        linkedNode = linkedNode.next
+        ret
+      }
+    }
+  }
+
   /**
     * empties a list
     */
@@ -48,32 +83,26 @@ class LinkedList[T] extends mutable.Iterable[T] {
   }
 
   /**
+    * Appends a Traversable at the end of a linked list
+    * @param list the list to be appended
+    */
+  def ++=(list: Traversable[T]): Unit = list.foreach(elem => this += elem)
+
+
+  /**
     * appends an element to the list
     * @param elem the element to be appended
     */
   def +=(elem: T): Unit = {
+    val node = new LinkedNode[T](elem, null, 0)
     if (listLength == 0) {
-      insertAll(elems = elem :: Nil)
+      firstNode = node
     } else {
-      findByIndex(listLength - 1).next = new LinkedNode[T](elem, null, listLength)
-      listLength += 1
+      node.index = listLength
+      lastNode.next = node
     }
-  }
-
-  /**
-    * inserts all the elements contained in a list into this list
-    * @param startIndex the index after which we want to insert the list elements, default = 0
-    * @param elems the list of elements to be inserted
-    */
-  def insertAll(startIndex: Int = 0, elems: Traversable[T]): Unit = {
-    if (listLength == 0) {
-      listLength += 1
-      firstNode = new LinkedNode[T](elems.head, null, 0)
-      insertAllHelper(elems = elems.tail)
-    } else {
-      val currentNode = findByIndex(startIndex)
-      insertAllHelper(currentNode.index, currentNode, currentNode.next, elems)
-    }
+    lastNode = node
+    listLength += 1
   }
 
   /**
@@ -98,7 +127,7 @@ class LinkedList[T] extends mutable.Iterable[T] {
     * @param elem the element to be removed
     */
   def -=(elem: T): Unit = {
-    remove(findByValue(elem).index)
+    remove(findByValue(elem))
   }
 
   /**
@@ -126,20 +155,61 @@ class LinkedList[T] extends mutable.Iterable[T] {
     * prepends an element to the list
     * @param elem the element to be prepended
     */
-  def push(elem: T) = +=:(elem)
+  def push(elem: T) = :+=(elem)
 
   /**
     * prepends an element to the list
     * @param elem the element to be prepended
     */
-  def +=:(elem: T): Unit = {
+  def :+=(elem: T): Unit = {
+    val node = new LinkedNode[T](elem, null, 0)
     if (listLength == 0) {
-      insertAll(elems = elem :: Nil)
+      lastNode = node
     } else {
       val prevHead = firstNode
       changeIndex(1, prevHead)
-      firstNode = new LinkedNode[T](elem, prevHead, 0)
+      node.next = firstNode
+    }
+    firstNode = node
+    listLength += 1
+  }
+
+  /**
+    * inserts all the elements contained in a list into this list
+    * @param startIndex the index after which we want to insert the list elements, default = 0
+    * @param elems the list of elements to be inserted
+    */
+  def insertAll(startIndex: Int = 0, elems: Traversable[T]): Unit = {
+    if (elems.isEmpty)
+      return
+    if (listLength == 0) {
+      elems.foreach(elem => this += elem)
+    } else {
+      val currentNode = findByIndex(startIndex)
+      insertAllHelper(currentNode.index, currentNode, currentNode.next, elems)
+    }
+  }
+
+  /** Some helper methods that allow to write easily remove, insertion methods **/
+  private def insertAllHelper(startIndex: Int = 0, startNode: LinkedNode[T] = firstNode, nextNode: LinkedNode[T] = null,
+    elems: Traversable[T]) = {
+    var currentNode = startNode
+    var i = startIndex
+    for (elem <- elems) {
+      i += 1
       listLength += 1
+      currentNode.next = new LinkedNode[T](elem, nextNode, i)
+      currentNode = currentNode.next
+    }
+    if (nextNode != null)
+      nextNode.index += i
+  }
+
+  private def changeIndex(modifier: Int, startNode: LinkedNode[T] = firstNode) = {
+    var linkedNode = startNode
+    while (linkedNode.next != null) {
+      linkedNode.index += modifier
+      linkedNode = linkedNode.next
     }
   }
 
@@ -148,8 +218,8 @@ class LinkedList[T] extends mutable.Iterable[T] {
     * @return the first element of the list
     */
   def pop(): T = {
-    val h = head
-    drop(1)
+    val h = apply(0)
+    this -= h
     h
   }
 
@@ -158,26 +228,6 @@ class LinkedList[T] extends mutable.Iterable[T] {
     * @return a buffer containing the tail of the list
     */
   override def tail() = iterator.drop(1).toBuffer
-
-  /**
-    * gets an iterator for the list
-    * @return an instance of the iterator
-    */
-  override def iterator: Iterator[T] = {
-    new Iterator[T] {
-      private var linkedNode = firstNode
-
-      override def hasNext: Boolean = linkedNode != null && linkedNode != lastNode
-
-      override def next(): T = {
-        if (!hasNext)
-          throw new IndexOutOfBoundsException("Trying to iterate over bounds")
-        val ret = linkedNode.value
-        linkedNode = linkedNode.next
-        ret
-      }
-    }
-  }
 
   /**
     * @return the size of the list
@@ -201,7 +251,6 @@ class LinkedList[T] extends mutable.Iterable[T] {
     list
   }
 
-
   /**
     * finds all the values that don't match a predicate
     * @param predicate the predicate to be used when matching
@@ -221,12 +270,18 @@ class LinkedList[T] extends mutable.Iterable[T] {
   override def equals(other: Any): Boolean = other match {
     case that: LinkedList[T] =>
       (that canEqual this) &&
-        listLength == that.listLength && toSet == that.toSet
+      listLength == that.listLength && toSet == that.toSet
     case _ => false
   }
 
   // Automatically Generated
   override def canEqual(other: Any): Boolean = other.isInstanceOf[LinkedList[T]]
+
+  def reverse(): LinkedList[T] = {
+    val list = new LinkedList[T]()
+    foreach(elem => list :+= elem)
+    list
+  }
 
   // Automatically Generated
   override def hashCode(): Int = {
@@ -234,46 +289,6 @@ class LinkedList[T] extends mutable.Iterable[T] {
     state.map(_.hashCode()).foldLeft(0)((a, b) => 31 * a + b)
   }
 
-  /** Some helper methods that allow to write easily remove, insertion methods **/
-  private def insertAllHelper(startIndex: Int = 0,
-                              startNode: LinkedNode[T] = firstNode,
-                              nextNode: LinkedNode[T] = null,
-                              elems: Traversable[T]) = {
-    var currentNode = startNode
-    var i = startIndex
-    for (elem <- elems) {
-      i += 1
-      listLength += 1
-      currentNode.next = new LinkedNode[T](elem, nextNode, i)
-      currentNode = currentNode.next
-    }
-    if (nextNode != null)
-      nextNode.index += i
-  }
-
-  private def findByIndex(i: Int) = {
-    if (i >= listLength)
-      throw new IndexOutOfBoundsException(s"Index out of bounds: $i, list size: $listLength ")
-
-    var node = firstNode
-    while (node.index != i)
-      node = node.next
-    node
-  }
-
-  private def findByValue(value: T) = {
-    var node = firstNode
-    while (node.value != value)
-      node = node.next
-    node
-  }
-
-  private def changeIndex(modifier: Int, startNode: LinkedNode[T] = firstNode) = {
-    var linkedNode = startNode
-    while (linkedNode.next != null) {
-      linkedNode.index += modifier
-      linkedNode = linkedNode.next
-    }
-  }
+  private def findByValue(value: T): Int = iterator.indexOf(value)
 
 }
