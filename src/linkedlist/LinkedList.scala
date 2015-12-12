@@ -1,13 +1,9 @@
-package wacc_deod.utils.linkedlist
-
-
-import wacc_deod.utils.Log
+package linkedlist
 
 import scala.collection.mutable
 
-/**
-  * Created by Domenico on 26/11/2015.
-  */
+class LinkedNode[T](var value: T, var  next:  LinkedNode[T], var index: Int)
+
 class LinkedList[T] extends mutable.Iterable[T] {
 
   private var listLength = 0
@@ -41,15 +37,14 @@ class LinkedList[T] extends mutable.Iterable[T] {
   def update(n: Int, newelem: T) = findByIndex(n).value = newelem
 
   private def findByIndex(i: Int) = {
-    if (i >= listLength) {
-      Log.d(iterator.length)
+    if (i >= listLength)
       throw new IndexOutOfBoundsException(s"Index out of bounds: $i, list size: $listLength")
-    }
+
     var node = firstNode
 
-    while (node.index < i) {
+    while (node.index < i)
       node = node.next
-    }
+
     node
   }
 
